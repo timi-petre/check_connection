@@ -1,28 +1,25 @@
+import 'dart:async';
+
+import 'package:check_connection/utils.dart';
+import 'package:connectivity/connectivity.dart';
 import 'package:flutter/material.dart';
+import 'package:overlay_support/overlay_support.dart';
 
 void main() {
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        primarySwatch: Colors.blue,
+    return OverlaySupport(
+      child: MaterialApp(
+        title: 'Flutter Demo',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+        ),
+        home: MyHomePage(title: 'Has Internet'),
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
@@ -30,84 +27,55 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   MyHomePage({Key? key, required this.title}) : super(key: key);
 
-  
-  
-  
-
-  
-  
-  
-  
-
   final String title;
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+void showConnectivitySnackBar(ConnectivityResult result) {
+  final hasInternet = result != ConnectivityResult.none;
+  final message =
+      hasInternet ? 'You have again ${result.toString()}' : 'You have internet';
+  final color = hasInternet ? Colors.green : Colors.red;
 
-  void _incrementCounter() {
-    setState(() {
-      
-      
-      
-      
-      
-      _counter++;
-    });
+  BuildContext? context;
+  Utils.showTopSnackBar(context!, message, color);
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  StreamSubscription? subsription;
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    subsription =
+        Connectivity().onConnectivityChanged.listen(showConnectivitySnackBar);
+  }
+
+  @override
+  void dispose() {
+    subsription!.cancel();
+    // TODO: implement dispose
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    
-    
-    
-    
-    
-    
     return Scaffold(
       appBar: AppBar(
-        
-        
         title: Text(widget.title),
       ),
       body: Center(
-        
-        
-        child: Column(
-          
-          
-          
-          
-          
-          
-          
-          
-          
-          
-          
-          
-          
-          
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(padding: EdgeInsets.all(12)),
+          child: Text('Check connection'),
+          onPressed: () async {
+            final result = await Connectivity().checkConnectivity();
+            showConnectivitySnackBar(result);
+          },
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), 
     );
   }
 }

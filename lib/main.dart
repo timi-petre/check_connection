@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:check_connection/utils.dart';
-import 'package:connectivity/connectivity.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:overlay_support/overlay_support.dart';
 
 void main() {
@@ -12,13 +12,13 @@ void main() {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return OverlaySupport(
+    return OverlaySupport.global(
       child: MaterialApp(
-        title: 'Flutter Demo',
+        title: 'Check Connectivity',
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
-        home: MyHomePage(title: 'Has Internet'),
+        home: MyHomePage(title: 'Check Connectivity'),
       ),
     );
   }
@@ -33,29 +33,31 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-void showConnectivitySnackBar(ConnectivityResult result) {
-  final hasInternet = result != ConnectivityResult.none;
-  final message =
-      hasInternet ? 'You have again ${result.toString()}' : 'You have internet';
-  final color = hasInternet ? Colors.green : Colors.red;
-
-  BuildContext? context;
-  Utils.showTopSnackBar(context!, message, color);
-}
-
 class _MyHomePageState extends State<MyHomePage> {
-  StreamSubscription? subsription;
+  late StreamSubscription subscription;
+  late StreamSubscription internetSubscription;
+  bool hasInternet = false;
+  ConnectivityResult result = ConnectivityResult.none;
+
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    subsription =
-        Connectivity().onConnectivityChanged.listen(showConnectivitySnackBar);
+    subscription = Connectivity().onConnectivityChanged.listen((result) {
+      setState(() => this.hasInternet = hasInternet);
+    });
+    internetSubscription =
+        InternetConnectionChecker().onStatusChange.listen((status) {
+      //sa verifice automat daca avem internet
+      final hasInternet = status == InternetConnectionStatus.connected;
+      setState(() => this.hasInternet = hasInternet);
+    });
   }
 
   @override
   void dispose() {
-    subsription!.cancel();
+    subscription.cancel();
+    internetSubscription.cancel();
     // TODO: implement dispose
     super.dispose();
   }
@@ -65,16 +67,57 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+        brightness: Brightness.dark,
       ),
-      body: Center(
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(padding: EdgeInsets.all(12)),
-          child: Text('Check connection'),
-          onPressed: () async {
-            final result = await Connectivity().checkConnectivity();
-            showConnectivitySnackBar(result);
-          },
-        ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Center(
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 15),
+                textStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              child: Text('Check connection'),
+              onPressed: () async {
+                hasInternet = await InternetConnectionChecker().hasConnection;
+
+                result = await Connectivity().checkConnectivity();
+
+                final color = hasInternet ? Colors.green : Colors.red;
+                final text = hasInternet ? 'Internet' : 'No Internet';
+                if (result == ConnectivityResult.mobile) {
+                  showSimpleNotification(
+                    Text(
+                      '$text: Mobile Network',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    background: color,
+                  );
+                } else if (result == ConnectivityResult.wifi) {
+                  showSimpleNotification(
+                    Text(
+                      '$text: Wifi Network',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    background: color,
+                  );
+                } else {
+                  showSimpleNotification(
+                    Text(
+                      '$text: No Network',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    background: Colors.red,
+                  );
+                }
+              },
+            ),
+          ),
+          SizedBox(
+            height: 20,
+          ),
+        ],
       ),
     );
   }
